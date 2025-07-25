@@ -1,4 +1,5 @@
 import asyncio
+import configparser
 import os
 from aiogram import Bot, Dispatcher
 from aiogram.client.bot import DefaultBotProperties
@@ -6,11 +7,13 @@ from aiogram.enums import ParseMode
 from datetime import datetime, timedelta
 import pytz
 from dotenv import load_dotenv
+from pathlib import Path
 
 load_dotenv()
 
 API_TOKEN = os.getenv('BOT_TOKEN')
 CHANNEL_ID =  os.getenv('CHANNEL_ID')
+CONFIG_FILE = 'bot_config.conf'
 
 bot = Bot(
     token=API_TOKEN,
@@ -27,9 +30,27 @@ async def wait_for_next_minute():
             return
         await asyncio.sleep(0.5)
 
+def read_config():
+    """Читает конфигурацию из файла."""
+    config = configparser.ConfigParser()
+    if Path(CONFIG_FILE).exists():
+        config.read(CONFIG_FILE)
+        try:
+            return config['Telegram'].getint('message_id')
+        except (KeyError, ValueError):
+            return None
+    return None
+
+def write_config(message_id):
+    """Записывает конфигурацию в файл."""
+    config = configparser.ConfigParser()
+    config['Telegram'] = {'message_id': str(message_id)}
+    with open(CONFIG_FILE, 'w') as f:
+        config.write(f)
+
 async def update_time_message():
     ekb_tz = pytz.timezone('Asia/Yekaterinburg') 
-    message_id = 48
+    message_id = read_config() 
     await wait_for_next_minute()
     while True:
         now = datetime.now(ekb_tz)
@@ -74,10 +95,15 @@ async def update_time_message():
             if message_id is None:
                 msg = await bot.send_message(CHANNEL_ID, text)
                 message_id = msg.message_id
+                write_config(message_id)
             else:
                 await bot.edit_message_text(text, chat_id=CHANNEL_ID, message_id=message_id)
         except Exception as e:
             print(f'Ошибка: {e}')
+            if "message to edit not found" in str(e).lower():
+                message_id = None
+                if Path(CONFIG_FILE).exists():
+                    Path(CONFIG_FILE).unlink() 
 
         await asyncio.sleep(10)
 
