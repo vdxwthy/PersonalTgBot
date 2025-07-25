@@ -14,7 +14,7 @@ load_dotenv()
 API_TOKEN = os.getenv('BOT_TOKEN')
 CHANNEL_ID =  os.getenv('CHANNEL_ID')
 CONFIG_FILE = 'bot_config.conf'
-
+UPDATE_SECONDS = 1
 bot = Bot(
     token=API_TOKEN,
     default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2)
@@ -105,7 +105,7 @@ async def update_time_message():
                 if Path(CONFIG_FILE).exists():
                     Path(CONFIG_FILE).unlink() 
 
-        await asyncio.sleep(10)
+        await asyncio.sleep(UPDATE_SECONDS)
 
 async def main():
     asyncio.create_task(update_time_message())
